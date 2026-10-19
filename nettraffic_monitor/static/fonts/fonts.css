@@ -1,0 +1,12 @@
+/* Fira Sans and Fira Code (latin subset), vendored so the dashboard works offline
+   and never contacts a third-party server. SIL Open Font License 1.1, see OFL-*.txt. */
+@font-face { font-family: "Fira Sans"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("fira-sans-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Fira Sans"; font-style: normal; font-weight: 500; font-display: swap;
+  src: url("fira-sans-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Fira Sans"; font-style: normal; font-weight: 600; font-display: swap;
+  src: url("fira-sans-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Fira Code"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("fira-code-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Fira Code"; font-style: normal; font-weight: 500; font-display: swap;
+  src: url("fira-code-latin-500-normal.woff2") format("woff2"); }

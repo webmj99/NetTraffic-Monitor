@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NetTraffic-Monitor</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233987e5' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M3 12h4l3-8 4 16 3-8h4'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="vendor/uPlot.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-pulse" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v15M6 13l6 6 6-6"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 20V5M6 11l6-6 6 6"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></symbol>
+  <symbol id="i-lan" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="3" y="16" width="6" height="5" rx="1"/><rect x="15" y="16" width="6" height="5" rx="1"/><path d="M12 8v4M6 16v-4h12v4"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+  <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><path d="M7 7.5h.01M7 16.5h.01"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+</svg>
+
+<header class="topbar">
+  <div class="brand"><svg class="ic"><use href="#i-pulse"/></svg><span>NetTraffic-Monitor</span></div>
+  <nav class="tabs" aria-label="Views">
+    <a href="#/" data-view="overview"><svg class="ic"><use href="#i-grid"/></svg>Overview</a>
+    <a href="#/live" data-view="live"><svg class="ic"><use href="#i-pulse"/></svg>Live detail</a>
+    <a href="#/verlauf" data-view="history"><svg class="ic"><use href="#i-history"/></svg>History</a>
+    <a href="#/gegenstellen" data-view="hosts"><svg class="ic"><use href="#i-server"/></svg>Endpoints</a>
+    <a href="#/einstellungen" data-view="settings"><svg class="ic"><use href="#i-gear"/></svg>Settings</a>
+  </nav>
+  <div class="spacer"></div>
+  <div class="status" id="status" role="status" aria-live="polite">
+    <span class="dot" aria-hidden="true"></span><span id="statusText">Connecting …</span>
+  </div>
+  <button class="btn" id="lang" type="button">Deutsch</button>
+  <button class="btn" id="toggle" type="button" disabled>
+    <svg class="ic"><use href="#i-play"/></svg><span>Start</span>
+  </button>
+</header>
+
+<main>
+  <p class="error" id="error" role="alert" hidden></p>
+
+  <!-- ===== Overview ===== -->
+  <section class="view" id="view-overview" aria-labelledby="h-overview">
+    <div class="toolbar">
+      <h1 id="h-overview">Overview</h1>
+      <div class="seg" role="radiogroup" aria-label="Period" id="ranges">
+        <button type="button" role="radio" data-range="live" aria-checked="true">Live 5 min</button>
+        <button type="button" role="radio" data-range="3600" aria-checked="false">1 h</button>
+        <button type="button" role="radio" data-range="86400" aria-checked="false">24 h</button>
+        <button type="button" role="radio" data-range="604800" aria-checked="false">7 days</button>
+        <button type="button" role="radio" data-range="2592000" aria-checked="false">30 days</button>
+      </div>
+    </div>
+
+    <div class="kpis" id="ov-kpis"></div>
+
+    <div class="charts">
+      <article class="card">
+        <header class="card-h"><h2><svg class="ic"><use href="#i-globe"/></svg>Internet traffic</h2><span class="hint" id="stepHint"></span></header>
+        <div class="chart" id="chartExt"></div>
+      </article>
+      <article class="card">
+        <header class="card-h"><h2><svg class="ic"><use href="#i-lan"/></svg>LAN traffic</h2></header>
+        <div class="chart" id="chartInt"></div>
+      </article>
+    </div>
+
+    <article class="card">
+      <header class="card-h">
+        <h2>Processes</h2>
+        <label class="search"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>
+          <span class="sr">Filter processes</span><input id="filter" type="search" placeholder="Filter by name or path" autocomplete="off"></label>
+      </header>
+      <div class="table-wrap">
+        <table class="procs" id="ov-table">
+          <thead><tr>
+            <th scope="col"><button type="button" data-sort="name">Process / path</button></th>
+            <th scope="col" class="num"><button type="button" data-sort="ed">Internet ↓</button></th>
+            <th scope="col" class="num"><button type="button" data-sort="eu">Internet ↑</button></th>
+            <th scope="col" class="num"><button type="button" data-sort="id">LAN ↓</button></th>
+            <th scope="col" class="num"><button type="button" data-sort="iu">LAN ↑</button></th>
+            <th scope="col" class="num"><button type="button" data-sort="total" aria-sort="descending">Total</button></th>
+            <th scope="col" class="num"><button type="button" data-sort="rate">Current</button></th>
+          </tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <p class="empty" id="empty" hidden>No processes with traffic in this period.</p>
+      </div>
+    </article>
+  </section>
+
+  <!-- ===== Live detail ===== -->
+  <section class="view" id="view-live" aria-labelledby="h-live" hidden>
+    <div class="toolbar">
+      <h1 id="h-live">Live detail</h1>
+      <span class="hint">per second · upload and download separately for internet and LAN</span>
+      <div class="spacer"></div>
+      <div class="seg" role="radiogroup" aria-label="Time window" id="lv-win">
+        <button type="button" role="radio" data-win="60" aria-checked="false">1 min</button>
+        <button type="button" role="radio" data-win="300" aria-checked="true">5 min</button>
+        <button type="button" role="radio" data-win="900" aria-checked="false">15 min</button>
+      </div>
+      <button class="btn" id="lv-pause" type="button" aria-pressed="false"><svg class="ic"><use href="#i-pause"/></svg><span>Pause</span></button>
+    </div>
+    <div class="quad" id="lv-panels"></div>
+  </section>
+
+  <!-- ===== History ===== -->
+  <section class="view" id="view-history" aria-labelledby="h-history" hidden>
+    <div class="toolbar">
+      <h1 id="h-history">History</h1>
+      <div class="seg" role="radiogroup" aria-label="Period" id="hv-presets">
+        <button type="button" role="radio" data-preset="3600" aria-checked="false">1 h</button>
+        <button type="button" role="radio" data-preset="21600" aria-checked="false">6 h</button>
+        <button type="button" role="radio" data-preset="86400" aria-checked="true">24 h</button>
+        <button type="button" role="radio" data-preset="604800" aria-checked="false">7 days</button>
+        <button type="button" role="radio" data-preset="2592000" aria-checked="false">30 days</button>
+        <button type="button" role="radio" data-preset="all" aria-checked="false">All time</button>
+      </div>
+      <form class="custom-range" id="hv-custom">
+        <label>From <input type="datetime-local" id="hv-from" required></label>
+        <label>To <input type="datetime-local" id="hv-to" required></label>
+        <button class="btn" type="submit">Show</button>
+      </form>
+    </div>
+
+    <div class="kpis five" id="hv-kpis"></div>
+
+    <article class="card">
+      <header class="card-h">
+        <h2>Top applications over time</h2>
+        <span class="hint" id="hv-step"></span>
+        <div class="seg sm" role="radiogroup" aria-label="Channel" id="hv-chan">
+          <button type="button" role="radio" data-chan="all" aria-checked="true">All</button>
+          <button type="button" role="radio" data-chan="ed" aria-checked="false">Internet ↓</button>
+          <button type="button" role="radio" data-chan="eu" aria-checked="false">Internet ↑</button>
+          <button type="button" role="radio" data-chan="id" aria-checked="false">LAN ↓</button>
+          <button type="button" role="radio" data-chan="iu" aria-checked="false">LAN ↑</button>
+        </div>
+      </header>
+      <div class="chart tall" id="hv-chart"></div>
+    </article>
+
+    <article class="card">
+      <header class="card-h">
+        <h2>All applications <span class="count" id="hv-count"></span></h2>
+        <label class="search"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>
+          <span class="sr">Filter applications</span><input id="hv-filter" type="search" placeholder="Name, path or vendor" autocomplete="off"></label>
+        <button class="btn sm" id="hv-csv" type="button"><svg class="ic"><use href="#i-download"/></svg>CSV</button>
+      </header>
+      <div class="table-wrap">
+        <table class="procs" id="hv-table">
+          <thead><tr>
+            <th scope="col"><button type="button" data-sort="name">Application / path</button></th>
+            <th scope="col"><button type="button" data-sort="company">Vendor</button></th>
+            <th scope="col" class="num"><button type="button" data-sort="ed">Internet ↓</button></th>
+            <th scope="col" class="num"><button type="button" data-sort="eu">Internet ↑</button></th>
+            <th scope="col" class="num"><button type="button" data-sort="id">LAN ↓</button></th>
+            <th scope="col" class="num"><button type="button" data-sort="iu">LAN ↑</button></th>
+            <th scope="col" class="num"><button type="button" data-sort="total" aria-sort="descending">Total</button></th>
+            <th scope="col" class="num"><button type="button" data-sort="share">Share</button></th>
+            <th scope="col" class="num"><button type="button" data-sort="minutes">Active</button></th>
+            <th scope="col" class="num"><button type="button" data-sort="pids">Processes</button></th>
+            <th scope="col" class="num"><button type="button" data-sort="last">Last active</button></th>
+          </tr></thead>
+          <tbody id="hv-rows"></tbody>
+        </table>
+        <p class="empty" id="hv-empty" hidden>No applications with traffic in this period.</p>
+      </div>
+    </article>
+  </section>
+
+  <!-- ===== Endpoints ===== -->
+  <section class="view" id="view-hosts" aria-labelledby="h-hosts" hidden>
+    <div class="toolbar">
+      <h1 id="h-hosts">Endpoints</h1>
+      <div class="seg" role="radiogroup" aria-label="Period" id="ep-presets">
+        <button type="button" role="radio" data-preset="3600" aria-checked="false">1 h</button>
+        <button type="button" role="radio" data-preset="21600" aria-checked="false">6 h</button>
+        <button type="button" role="radio" data-preset="86400" aria-checked="true">24 h</button>
+        <button type="button" role="radio" data-preset="604800" aria-checked="false">7 days</button>
+        <button type="button" role="radio" data-preset="2592000" aria-checked="false">30 days</button>
+        <button type="button" role="radio" data-preset="all" aria-checked="false">All time</button>
+      </div>
+      <form class="custom-range" id="ep-custom">
+        <label>From <input type="datetime-local" id="ep-from" required></label>
+        <label>To <input type="datetime-local" id="ep-to" required></label>
+        <button class="btn" type="submit">Show</button>
+      </form>
+    </div>
+
+    <div class="kpis five" id="ep-kpis">
+      <article class="kpi"><h2><svg class="ic"><use href="#i-server"/></svg>Endpoints</h2>
+        <p class="big" id="ep-k-count">–</p><p class="sub" id="ep-k-count-sub">–</p></article>
+      <article class="kpi"><h2><svg class="ic"><use href="#i-globe"/></svg>Internet</h2>
+        <p class="big" id="ep-k-ext">–</p><p class="sub" id="ep-k-ext-sub">–</p></article>
+      <article class="kpi"><h2><svg class="ic"><use href="#i-lan"/></svg>LAN</h2>
+        <p class="big" id="ep-k-lan">–</p><p class="sub" id="ep-k-lan-sub">–</p></article>
+      <article class="kpi"><h2><svg class="ic"><use href="#i-plus"/></svg>New in period</h2>
+        <p class="big" id="ep-k-new">–</p><p class="sub" id="ep-k-new-sub">first seen</p></article>
+      <article class="kpi"><h2><svg class="ic"><use href="#i-grid"/></svg>Largest endpoint</h2>
+        <p class="big small" id="ep-k-top">–</p><p class="sub" id="ep-k-top-sub">–</p></article>
+    </div>
+
+    <article class="card">
+      <header class="card-h">
+        <h2>Top endpoints over time</h2>
+        <span class="hint" id="ep-step"></span>
+        <div class="seg sm" role="radiogroup" aria-label="Channel" id="ep-chan">
+          <button type="button" role="radio" data-chan="all" aria-checked="true">All</button>
+          <button type="button" role="radio" data-chan="ed" aria-checked="false">Internet ↓</button>
+          <button type="button" role="radio" data-chan="eu" aria-checked="false">Internet ↑</button>
+          <button type="button" role="radio" data-chan="id" aria-checked="false">LAN ↓</button>
+          <button type="button" role="radio" data-chan="iu" aria-checked="false">LAN ↑</button>
+        </div>
+      </header>
+      <div class="chart tall" id="ep-chart"></div>
+    </article>
+
+    <article class="card">
+      <header class="card-h">
+        <h2>All endpoints <span class="count" id="ep-count"></span></h2>
+        <div class="seg sm" role="radiogroup" aria-label="Network" id="ep-net">
+          <button type="button" role="radio" data-net="all" aria-checked="true">All</button>
+          <button type="button" role="radio" data-net="ext" aria-checked="false">Internet</button>
+          <button type="button" role="radio" data-net="lan" aria-checked="false">LAN</button>
+        </div>
+        <label class="search"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>
+          <span class="sr">Filter endpoints</span><input id="ep-filter" type="search" placeholder="Host, IP, port or process" autocomplete="off"></label>
+        <button class="btn sm" id="ep-csv" type="button"><svg class="ic"><use href="#i-download"/></svg>CSV</button>
+      </header>
+      <div class="table-wrap">
+        <table class="procs" id="ep-table">
+          <thead><tr>
+            <th scope="col"><button type="button" data-sort="name">Endpoint / IP</button></th>
+            <th scope="col"><button type="button" data-sort="lan">Network</button></th>
+            <th scope="col"><button type="button" data-sort="portsTxt">Services / ports</button></th>
+            <th scope="col"><button type="button" data-sort="procsTxt">Processes</button></th>
+            <th scope="col" class="num"><button type="button" data-sort="down">Download</button></th>
+            <th scope="col" class="num"><button type="button" data-sort="up">Upload</button></th>
+            <th scope="col" class="num"><button type="button" data-sort="total" aria-sort="descending">Total</button></th>
+            <th scope="col" class="num"><button type="button" data-sort="share">Share</button></th>
+            <th scope="col" class="num"><button type="button" data-sort="minutes">Active</button></th>
+            <th scope="col" class="num"><button type="button" data-sort="first">First</button></th>
+            <th scope="col" class="num"><button type="button" data-sort="last">Last</button></th>
+          </tr></thead>
+          <tbody id="ep-rows"></tbody>
+        </table>
+        <p class="empty" id="ep-empty" hidden>No endpoints in this period.</p>
+      </div>
+    </article>
+  </section>
+
+  <!-- ===== Settings ===== -->
+  <section class="view" id="view-settings" aria-labelledby="h-settings" hidden>
+    <div class="toolbar"><h1 id="h-settings">Settings</h1></div>
+
+    <div class="settings">
+      <article class="card">
+        <header class="card-h"><h2><svg class="ic"><use href="#i-history"/></svg>Data retention</h2></header>
+        <form class="form" id="st-form" novalidate>
+          <p class="muted">Data older than this is deleted permanently. Leave empty (or 0) to keep it forever.</p>
+          <div class="field">
+            <label for="st-sec">Per-second detail</label>
+            <span class="inp"><input id="st-sec" type="number" min="0" max="36500" step="1" inputmode="numeric" placeholder="forever"><span>days</span></span>
+            <p class="help">Live view and periods up to 1 hour. Older periods are shown from per-minute data. This is the bulk of the database.</p>
+          </div>
+          <div class="field">
+            <label for="st-min">Per-minute history</label>
+            <span class="inp"><input id="st-min" type="number" min="0" max="36500" step="1" inputmode="numeric" placeholder="forever"><span>days</span></span>
+            <p class="help">Charts and tables for longer periods. Must be kept at least as long as per-second detail.</p>
+          </div>
+          <div class="field">
+            <label for="st-ep">Endpoints</label>
+            <span class="inp"><input id="st-ep" type="number" min="0" max="36500" step="1" inputmode="numeric" placeholder="forever"><span>days</span></span>
+            <p class="help">Remote endpoints with their ports and processes (per minute).</p>
+          </div>
+          <label class="check"><input type="checkbox" id="st-auto"><span>Clean up automatically: after saving and every 6 hours</span></label>
+          <label class="check"><input type="checkbox" id="st-vacuum"><span>Compact the database after an automatic cleanup once at least 25 % of the file is free space</span></label>
+          <div class="form-actions">
+            <button class="btn primary" type="submit" id="st-save">Save</button>
+            <span class="msg" id="st-msg" role="status"></span>
+          </div>
+        </form>
+      </article>
+
+      <article class="card">
+        <header class="card-h"><h2><svg class="ic"><use href="#i-db"/></svg>Database maintenance</h2><span class="hint" id="mt-state" role="status"></span></header>
+        <div class="form">
+          <dl class="meta" id="mt-info"></dl>
+          <ul class="tasks">
+            <li><div><h3>Clean up now</h3><p class="help">Deletes data older than the saved retention periods.</p><p class="last" id="mt-last-cleanup"></p></div>
+              <button class="btn" type="button" data-task="cleanup">Clean up</button></li>
+            <li><div><h3>Compact database</h3><p class="help">Rebuilds the file to give free space back to the disk (VACUUM). Needs free disk space about the size of the database; new data waits in memory meanwhile.</p><p class="last" id="mt-last-vacuum"></p></div>
+              <button class="btn" type="button" data-task="vacuum">Compact</button></li>
+            <li><div><h3>Empty write buffer</h3><p class="help">Moves the write-ahead log (WAL) into the database and truncates it.</p><p class="last" id="mt-last-checkpoint"></p></div>
+              <button class="btn" type="button" data-task="checkpoint">Empty</button></li>
+            <li><div><h3>Check integrity</h3><p class="help">Quick read-only consistency check of the database file.</p><p class="last" id="mt-last-check"></p></div>
+              <button class="btn" type="button" data-task="check">Check</button></li>
+          </ul>
+        </div>
+      </article>
+    </div>
+  </section>
+</main>
+
+<footer class="foot" id="foot"><svg class="ic"><use href="#i-db"/></svg><span id="dbinfo">–</span></footer>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" aria-labelledby="d-name" role="dialog" aria-modal="true" hidden>
+  <header class="drawer-h">
+    <div><h2 id="d-name">–</h2><p class="muted" id="d-desc"></p></div>
+    <button class="icon-btn" id="d-close" type="button" aria-label="Close details"><svg class="ic"><use href="#i-x"/></svg></button>
+  </header>
+  <div class="drawer-b">
+    <dl class="meta">
+      <dt>Path</dt><dd><code id="d-path"></code>
+        <span class="row-actions">
+          <button class="btn sm" id="d-copy" type="button"><svg class="ic"><use href="#i-copy"/></svg><span>Copy</span></button>
+          <button class="btn sm" id="d-reveal" type="button"><svg class="ic"><use href="#i-folder"/></svg>Show in Explorer</button>
+        </span></dd>
+      <dt>Vendor</dt><dd id="d-company"></dd>
+      <dt>Product</dt><dd id="d-product"></dd>
+      <dt>File size</dt><dd id="d-size"></dd>
+      <dt>File modified</dt><dd id="d-mtime"></dd>
+      <dt>First seen</dt><dd id="d-first"></dd>
+      <dt>Last active</dt><dd id="d-last"></dd>
+    </dl>
+    <h3>Traffic <span id="d-range"></span></h3>
+    <div class="chart sm" id="chartProc"></div>
+    <h3>Endpoints in period</h3>
+    <table class="pids"><thead><tr><th scope="col">Endpoint</th><th scope="col">Network</th><th scope="col" class="num">↓</th><th scope="col" class="num">↑</th></tr></thead><tbody id="d-hosts"></tbody></table>
+    <h3>Process IDs</h3>
+    <table class="pids"><thead><tr><th scope="col">PID</th><th scope="col">Started</th><th scope="col">Active from – to</th></tr></thead><tbody id="d-pids"></tbody></table>
+  </div>
+</aside>
+
+<aside class="drawer" id="hdrawer" aria-labelledby="h-name" role="dialog" aria-modal="true" hidden>
+  <header class="drawer-h">
+    <div><h2 id="h-name">–</h2><p class="muted" id="h-sub"></p></div>
+    <button class="icon-btn" id="h-close" type="button" aria-label="Close details"><svg class="ic"><use href="#i-x"/></svg></button>
+  </header>
+  <div class="drawer-b">
+    <dl class="meta">
+      <dt>IP address</dt><dd><code id="h-ip"></code>
+        <span class="row-actions"><button class="btn sm" id="h-copy" type="button"><svg class="ic"><use href="#i-copy"/></svg><span>Copy</span></button></span></dd>
+      <dt>Hostname</dt><dd id="h-host"></dd>
+      <dt>Network</dt><dd id="h-net"></dd>
+      <dt>First seen</dt><dd id="h-first"></dd>
+      <dt>Last seen</dt><dd id="h-last"></dd>
+      <dt>Total traffic</dt><dd id="h-total"></dd>
+      <dt>In period</dt><dd id="h-range"></dd>
+    </dl>
+    <h3>Traffic in period</h3>
+    <div class="chart sm" id="chartHost"></div>
+    <h3>Processes</h3>
+    <table class="pids"><thead><tr><th scope="col">Process</th><th scope="col" class="num">↓</th><th scope="col" class="num">↑</th><th scope="col" class="num">Active</th></tr></thead><tbody id="h-procs"></tbody></table>
+    <h3>Services / ports <small class="muted">(total)</small></h3>
+    <table class="pids"><thead><tr><th scope="col">Service</th><th scope="col">Port</th><th scope="col" class="num">Traffic</th><th scope="col">First – last</th></tr></thead><tbody id="h-ports"></tbody></table>
+  </div>
+</aside>
+
+<script src="vendor/uPlot.iife.min.js"></script>
+<script src="core.js"></script>
+<script src="overview.js"></script>
+<script src="live.js"></script>
+<script src="history.js"></script>
+<script src="endpoints.js"></script>
+<script src="settings.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
