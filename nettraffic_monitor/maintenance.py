@@ -115,6 +115,8 @@ class Maintenance:
         res = dict.fromkeys(("sec", "minute", "ep_minute", "hosts", "host_ports", "pids", "runs"), 0)
         if cut["sec"]:
             res["sec"] = self._delete_before("sec", cut["sec"])
+            with st.lock:
+                st.sec_count -= res["sec"]
         if cut["minute"]:
             res["minute"] = self._delete_before("minute", cut["minute"])
             with st.lock:

@@ -13,6 +13,7 @@ INVALID_PROCESSTRACE_HANDLE = 0xFFFFFFFFFFFFFFFF
 
 WNODE_FLAG_TRACED_GUID = 0x00020000
 EVENT_TRACE_REAL_TIME_MODE = 0x00000100
+EVENT_TRACE_CONTROL_QUERY = 0
 EVENT_TRACE_CONTROL_STOP = 1
 EVENT_CONTROL_CODE_ENABLE_PROVIDER = 1
 PROCESS_TRACE_MODE_REAL_TIME = 0x00000100
@@ -228,6 +229,13 @@ class NetworkTrace:
                           int.from_bytes(dport, "big"), int.from_bytes(sport, "big"), udp)
         except Exception:  # never let an exception escape into ETW
             pass
+
+    def lost(self):
+        """[events, real-time buffers] dropped by ETW so far (buffers full / consumer too slow)."""
+        buf, p = _props_buffer(self.name)
+        if advapi.ControlTraceW(0, self.name, buf, EVENT_TRACE_CONTROL_QUERY) != 0:
+            return [0, 0]
+        return [p.EventsLost, p.RealTimeBuffersLost]
 
     def _stop_session(self, name):
         buf, _ = _props_buffer(name)

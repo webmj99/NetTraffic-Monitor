@@ -84,15 +84,6 @@ if ($unsafe) {
 }
 
 if (Remove-AppService) { Write-Host "Removed existing $Name service." }
-# Upgrade from the old name NetMon: drop its service, take over its config and data (the .db is renamed on start).
-$OldDest = Join-Path $env:ProgramFiles 'NetMon'
-if (Remove-AppService 'NetMon') { Write-Host "Removed old NetMon service." }
-if ((Test-Path $OldDest) -and -not (Test-Path $Dest)) {
-    New-Item -ItemType Directory -Force "$Dest\data" | Out-Null
-    Copy-Item "$OldDest\config.json" $Dest -ErrorAction SilentlyContinue
-    Copy-Item "$OldDest\data\netmon.db*" "$Dest\data\" -ErrorAction SilentlyContinue
-    Write-Host "Copied config and database from $OldDest (delete that folder once everything works)"
-}
 
 # Deploy into Program Files: inherits SYSTEM/Administrators full control, Users read-only.
 New-Item -ItemType Directory -Force "$Dest\data" | Out-Null

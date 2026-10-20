@@ -49,7 +49,7 @@ function lvResetCharts() {
 
 function lvRender() {
   if (S.view !== "live" || LV.paused) return;
-  const end = now() - 2, start = end - LV.win + 1;
+  const end = liveEnd(), start = end - LV.win + 1;
 
   // One pass over the window: per channel sums, 3 s rates, peaks, endpoint sums.
   const A = CHANS.map(() => ({ sum: 0, peak: 0, rate: 0, avg: 0, procs: new Map(), pr: new Map(), eps: new Map(), er: new Map() }));

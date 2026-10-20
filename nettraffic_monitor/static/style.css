@@ -79,6 +79,7 @@ code, .mono, .num { font-family: var(--mono); font-variant-numeric: tabular-nums
 .btn.danger { border-color: var(--critical); color: var(--critical); }
 .btn.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--critical) 12%, transparent); }
 .btn.danger .ic, .btn.primary .ic { fill: currentColor; stroke: none; }
+.btn.icon { width: 36px; padding: 0; justify-content: center; }
 .btn.sm { min-height: 30px; padding: 0 var(--sp-3); font-size: 13px; }
 .icon-btn { display: grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 8px;
   background: transparent; color: var(--text-2); cursor: pointer; }
@@ -279,9 +280,10 @@ tr.link:hover, tr.link:focus-visible { background: var(--surface-2); }
 
 /* ---------- settings ---------- */
 .settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-4); align-items: start; }
+.settings-col { display: grid; gap: var(--sp-4); }
 .form { display: grid; gap: var(--sp-4); padding: var(--sp-4); }
 .field { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px var(--sp-3); }
-.field label { font-weight: 500; font-size: 14px; }
+.field label, .field .label { font-weight: 500; font-size: 14px; }
 .field .help { grid-column: 1 / -1; }
 .help { margin: 0; color: var(--text-3); font-size: 13px; }
 .inp { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--text-2); font-size: 13px; }

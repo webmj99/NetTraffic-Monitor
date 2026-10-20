@@ -61,6 +61,8 @@ def make_handler(collector, store, maint, port):
             now = int(time.time())
             to = int(q.get("to", [now + 1])[0])
             frm = int(q.get("from", [to - 300])[0])
+            if to - frm > 3600:  # long ranges partly read per-minute rows: align so every query covers the same span
+                frm -= frm % 60
             step = int(q.get("step", [0])[0]) or pick_step(to - frm)
             if step < 60 and frm < store.sec_floor():  # per-second rows are pruned there: use minutes
                 step = 60

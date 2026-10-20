@@ -40,17 +40,6 @@ def load_config(path):
     return {}
 
 
-def migrate_db(db):
-    """Renames a DB from the old NetMon name (data\\netmon.db) next to db, if db does not exist yet."""
-    old = os.path.join(os.path.dirname(os.path.abspath(db)), "netmon.db")
-    if os.path.basename(db) != "nettraffic-monitor.db" or os.path.exists(db) or not os.path.exists(old):
-        return
-    for sfx in ("-wal", "-shm", ""):  # main file last: its new name marks the migration as done
-        if os.path.exists(old + sfx):
-            os.replace(old + sfx, db + sfx)
-    print(f"Renamed {old} to {db}")
-
-
 def main(argv=None, stop_event=None):
     """stop_event (threading.Event) lets the Windows service host end the loop instead of Ctrl+C."""
     stop_event = stop_event or threading.Event()
@@ -68,7 +57,6 @@ def main(argv=None, stop_event=None):
     cfg = load_config(args.config)
     port = args.port or int(cfg.get("port", 8765))
     os.makedirs(os.path.dirname(os.path.abspath(args.db)), exist_ok=True)
-    migrate_db(args.db)
     store = Store(args.db)
     collector = Collector(store, Classifier(cfg.get("internal_networks", [])))
     httpd = serve(collector, store, Maintenance(store), port)

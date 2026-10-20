@@ -7,7 +7,7 @@ const OV = {
 const OV_LIVE = 300;
 
 function ovBounds() {
-  const to = now() + 1;
+  const to = OV.range === "live" ? liveEnd() + 1 : now() + 1;
   return { from: to - (OV.range === "live" ? OV_LIVE : +OV.range), to };
 }
 
@@ -19,7 +19,7 @@ function ovBuildCharts() {
 }
 
 function ovLiveSeries() {
-  const end = now() - 2, start = end - OV_LIVE;
+  const end = liveEnd(), start = end - OV_LIVE + 1;
   const x = [], cols = [[], [], [], []];
   for (let ts = start; ts <= end; ts++) {
     const rec = S.live.get(ts);
@@ -42,16 +42,28 @@ function ovHistSeries() {
   return { x, cols, step: h.step };
 }
 
+function ovLiveTop(x) {
+  const top = {};
+  for (const ts of x) {
+    for (const [id, ...v] of S.live.get(ts)?.p || []) {
+      const acc = top[id] || (top[id] = [0, 0, 0, 0]);
+      for (let i = 0; i < 4; i++) acc[i] += v[i];
+    }
+  }
+  return top;
+}
+
 function ovRender() {
   const d = OV.range === "live" ? ovLiveSeries() : ovHistSeries();
+  if (OV.range === "live") OV.top = ovLiveTop(d.x);
   OV.charts.ext?.setData([d.x, d.cols[T.ED], d.cols[T.EU]]);
   OV.charts.int?.setData([d.x, d.cols[T.ID], d.cols[T.IU]]);
   $("stepHint").textContent = d.step > 1 ? t("Ø per {0}", fmtStep(d.step)) : t("per second");
-  const end = now() - 2;
+  const end = liveEnd();
   for (const c of CHANS) {
     let n = 0, s = 0;
     for (let ts = end - 2; ts <= end; ts++) { const r = S.live.get(ts); if (r) { s += r.t[c.i]; n++; } }
-    $("ov-" + c.k).textContent = S.running && n ? fmtRate(s / n) : "–";
+    $("ov-" + c.k).textContent = S.running && n ? fmtRate(s / 3) : "–";
     const sum = d.cols[c.i].reduce((a, v) => a + (v || 0), 0) * d.step;
     $("ov-" + c.k + "-sub").innerHTML = `${t("Sum")} <span>${fmtBytes(sum)}</span>`;
   }
@@ -84,6 +96,7 @@ function ovRenderTable() {
 }
 
 async function ovLoadTop() {
+  if (OV.range === "live") return;  // computed from the live seconds in ovRender
   const { from, to } = ovBounds();
   OV.top = await api(`/api/top?from=${from}&to=${to}`);
   await ensureProcs(Object.keys(OV.top));

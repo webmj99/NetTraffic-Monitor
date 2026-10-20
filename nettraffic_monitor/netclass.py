@@ -25,7 +25,7 @@ def local_addresses():
 
 class Classifier:
     def __init__(self, extra_internal=()):
-        nets = [ipaddress.ip_network(n) for n in (*_BASE_INTERNAL, *extra_internal)]
+        nets = [ipaddress.ip_network(n, strict=False) for n in (*_BASE_INTERNAL, *extra_internal)]
         self.v4 = [n for n in nets if n.version == 4]
         self.v6 = [n for n in nets if n.version == 6]
         self._cache = {}

@@ -43,6 +43,7 @@ function renderStatus() {
   el.className = "status" + (S.running ? " on" : "") + (S.error ? " err" : "");
   let msg = S.running ? t("Running since {0}", tf.format(new Date(S.since * 1000))) : t("Stopped");
   if (S.running && S.lastTick && now() - S.lastTick > 5) msg = t("No data for {0} s", now() - S.lastTick);
+  if (S.running && (S.lost[0] || S.lost[1])) msg += " · " + t("lost: {0} events, {1} buffers", nf0.format(S.lost[0]), nf0.format(S.lost[1]));
   if (S.error) msg = t("Error");
   txt.textContent = msg;
   btn.className = "btn " + (S.running ? "danger" : "primary");
@@ -56,7 +57,7 @@ function renderStatus() {
 
 function applyStatus(s) {
   const was = S.running;
-  S.running = s.running; S.since = s.since; S.error = s.error;
+  S.running = s.running; S.since = s.since; S.error = s.error; S.lost = s.lost || [0, 0];
   $("toggle").disabled = false;
   if (s.running && !was && !S.runs.some((r) => r[1] == null)) S.runs.push([s.since, null]);
   if (!s.running && was) S.runs.forEach((r) => { if (r[1] == null) r[1] = now(); });
@@ -79,6 +80,7 @@ async function loadLive() {
   S.runs = mergeRuns(h.runs);
   for (const r of h.rows) if (!S.live.has(r[0])) S.live.set(r[0], { t: r.slice(1), p: null, e: null });
   for (const [ts, t, p, e] of live.ring) S.live.set(ts, { t, p, e });
+  if (live.ring.length) S.lastTs = Math.max(S.lastTs, live.ring[live.ring.length - 1][0]);
   S.live = new Map([...S.live].sort((a, b) => a[0] - b[0]));
   Object.assign(S.hosts, live.hosts);
   const ids = new Set();
@@ -92,6 +94,7 @@ function onTick(m) {
   S.live.set(ts, { t, p, e });
   Object.assign(S.hosts, m.h);
   S.lastTick = now();
+  S.lastTs = Math.max(S.lastTs, ts);
   const cut = ts - KEEP;
   for (const k of S.live.keys()) { if (k < cut) S.live.delete(k); else break; }
   ovOnTick(ts);
@@ -132,20 +135,39 @@ $("d-copy").addEventListener("click", async () => {
   setTimeout(() => (lbl.textContent = t("Copy")), 1500);
 });
 $("d-reveal").addEventListener("click", () => post("/api/reveal?id=" + S.detail).catch(showErr));
-matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+/* ---------- theme: explicit choice in data-theme (see theme.js), otherwise the system setting ---------- */
+const darkMq = matchMedia("(prefers-color-scheme: dark)");
+const isDark = () => (document.documentElement.dataset.theme || (darkMq.matches ? "dark" : "light")) === "dark";
+function renderThemeBtn() {
+  const b = $("theme"), label = isDark() ? t("Switch to light mode") : t("Switch to dark mode");
+  b.querySelector("use").setAttribute("href", isDark() ? "#i-sun" : "#i-moon");
+  b.setAttribute("aria-label", label);
+  b.title = label;
+}
+function onThemeChange() {  // charts read their colors from CSS variables once, so rebuild them
+  renderThemeBtn();
   ovBuildCharts(); lvResetCharts();
   destroyChart(HV.chart); HV.chart = null; hvRender();
   destroyChart(EP.chart); EP.chart = null; epRender();
   scheduleRender();
+}
+darkMq.addEventListener("change", onThemeChange);
+$("theme").addEventListener("click", () => {
+  const th = isDark() ? "light" : "dark";
+  document.documentElement.dataset.theme = th;
+  try { localStorage.setItem("theme", th); } catch {}
+  onThemeChange();
 });
 window.addEventListener("hashchange", route);
-$("lang").addEventListener("click", () => {
-  try { localStorage.setItem("lang", LANG === "de" ? "en" : "de"); } catch {}
+wireSeg($("st-lang"), (b) => {
+  if (b.dataset.lang === LANG) return;
+  try { localStorage.setItem("lang", b.dataset.lang); } catch {}
   location.reload();
 });
 
 /* ---------- boot ---------- */
 translatePage();
+renderThemeBtn();
 ovInit();
 lvInit();
 hvInit();

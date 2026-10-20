@@ -34,7 +34,8 @@ const DE_TEXT = {
   "Traffic in period": "Traffic im Zeitraum", "(total)": "(gesamt)", "Service": "Dienst", "First – last": "Erstmals – zuletzt",
   "{0} min": "{0} Min", "{0} h {1} min": "{0} Std {1} Min", "{0} days": "{0} Tage", "{0} h": "{0} Std", "{0} day": "{0} Tag",
   "Time": "Zeit", "No file description": "Keine Dateibeschreibung", "No endpoints recorded": "Keine Gegenstellen aufgezeichnet",
-  "Column width {0}": "Spaltenbreite {0}", "Running since {0}": "Läuft seit {0}", "Stopped": "Gestoppt",
+  "Column width {0}": "Spaltenbreite {0}", "Running since {0}": "Läuft seit {0}", "Language": "Sprache", "Switch to dark mode": "Zum dunklen Modus wechseln", "Switch to light mode": "Zum hellen Modus wechseln", "Interface language": "Sprache der Oberfläche",
+  "Saved in this browser. The page reloads to apply it.": "Wird in diesem Browser gespeichert. Die Seite lädt dafür neu.", "lost: {0} events, {1} buffers": "verloren: {0} Events, {1} Puffer", "Stopped": "Gestoppt",
   "No data for {0} s": "Keine Daten seit {0} s", "Error": "Fehler", "Error: {0}": "Fehler: {0}", "Stop": "Stopp",
   "Start monitoring": "Monitoring starten", "Stop monitoring": "Monitoring stoppen",
   "Data {0} (+ {1} write buffer) · {2} seconds with traffic · {3} programs · {4} endpoints · data since {5}":
@@ -95,9 +96,7 @@ const DE_TEXT = {
 const t = (s, ...a) => ((LANG === "de" && DE_TEXT[s]) || s).replace(/\{(\d)\}/g, (_, i) => a[i]);
 function translatePage() {
   document.documentElement.lang = LANG;
-  const b = $("lang");
-  b.textContent = LANG === "de" ? "English" : "Deutsch";
-  b.lang = LANG === "de" ? "en" : "de";
+  for (const b of $("st-lang").children) b.setAttribute("aria-checked", String(b.dataset.lang === LANG));
   if (LANG !== "de") return;
   const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   for (let n; (n = w.nextNode());) {
@@ -119,7 +118,7 @@ const CHANS = [
 
 const S = {
   view: "overview",
-  running: false, since: null, error: null, lastTick: 0, firstTs: null,
+  running: false, since: null, error: null, lost: [0, 0], lastTick: 0, lastTs: 0, firstTs: null,
   live: new Map(),          // ts -> {t: totals, p: [[proc,..4]]|null, e: [[proc, ip,..4]]|null}
   runs: [],                 // [[start, stop|null]]
   procs: {}, hosts: {},
@@ -157,6 +156,8 @@ function fmtStep(s) {
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const now = () => Math.floor(Date.now() / 1000);
+// Last complete second: follow the server's ticks so the window moves exactly when data arrives.
+const liveEnd = () => (S.running && now() - S.lastTs <= 5 ? S.lastTs : now() - 2);
 // Name, plus description (or parent folder) when several executables share that name.
 function procName(id) {
   const m = S.procs[id];

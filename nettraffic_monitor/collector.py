@@ -15,6 +15,7 @@ SETTLE = 2          # seconds to wait for late ETW buffers before a second is fi
 FLUSH_EVERY = 5     # seconds between DB commits
 RING = 900          # seconds of live history kept in memory
 KEEP_EXITED = 120   # seconds an exited process stays resolvable (late network events)
+DNS_BACKLOG = 500   # max reverse-DNS lookups waiting at once
 
 
 class Collector:
@@ -33,6 +34,7 @@ class Collector:
         self._ips = {}                                 # packed address -> ip string
         self._new_hosts = {}
         self._dns = ThreadPoolExecutor(max_workers=4, thread_name_prefix="rdns")
+        self._dns_pending = 0                          # queued + running lookups
         self.subscribers = set()
         self.trace = None
         self.started_at = None
@@ -50,7 +52,10 @@ class Collector:
         with self.lock:
             if self.trace:
                 return
-            self.last_done = int(time.time()) - SETTLE
+            now = int(time.time())
+            last = self.store.last_second()
+            # seconds already in the DB (restart within SETTLE) must not be written again
+            self.last_done = max(now - SETTLE, last if last is not None and last <= now else 0)
             self.pending.clear()
             trace = NetworkTrace(self._on_event, self._on_process)
             try:
@@ -80,7 +85,9 @@ class Collector:
         self._publish({"type": "status", **self.status()})
 
     def status(self):
-        return {"running": self.running, "since": self.started_at, "error": self.error, "events": self.events}
+        trace = self.trace
+        return {"running": self.running, "since": self.started_at, "error": self.error, "events": self.events,
+                "lost": trace.lost() if trace else [0, 0]}
 
     def subscribe(self):
         q = queue.Queue(maxsize=120)
@@ -185,8 +192,11 @@ class Collector:
                 self._ips.clear()
             ip = ipaddress.ip_address(raddr)
             s = self._ips[raddr] = str(getattr(ip, "ipv4_mapped", None) or ip)
-            if s not in self.hosts:
+            # unanswered lookups take seconds; past DNS_BACKLOG new IPs simply stay without a name
+            if s not in self.hosts and self._dns_pending < DNS_BACKLOG:
                 self.hosts[s] = ""
+                with self.lock:
+                    self._dns_pending += 1
                 self._dns.submit(self._lookup, s)
         return s
 
@@ -195,6 +205,9 @@ class Collector:
             name = socket.gethostbyaddr(ip)[0]
         except (OSError, UnicodeError):
             return
+        finally:
+            with self.lock:
+                self._dns_pending -= 1
         if len(self.hosts) > 20_000:
             self.hosts.clear()
         self.hosts[ip] = name

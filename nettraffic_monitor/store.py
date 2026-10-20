@@ -89,6 +89,8 @@ class Store:
         # close runs left open by a crash
         self.db.execute("UPDATE runs SET stop=COALESCE((SELECT MAX(ts) FROM sec WHERE ts>=runs.start), start) WHERE stop IS NULL")
         self.db.commit()
+        # counting `sec` walks the whole table, so count once and keep it current in flush() / cleanup
+        self.sec_count = self.db.execute("SELECT COUNT(*) FROM sec").fetchone()[0]
 
     @contextlib.contextmanager
     def reader(self):
@@ -174,37 +176,42 @@ class Store:
         if not (self._sec_rows or self._minute_delta or self._ep_delta or self._port_delta or self._names):
             return
         names, self._names = self._names, {}
-        with self.lock:
-            self.db.executemany(
-                "INSERT INTO ep_minute VALUES(?,?,?,?,?,?,?) ON CONFLICT(ts,host,proc) DO UPDATE SET"
-                " iu=iu+excluded.iu, id=id+excluded.id, eu=eu+excluded.eu, ed=ed+excluded.ed",
-                [(*k, *v) for k, v in self._ep_delta.items()])
-            self.db.executemany("UPDATE hosts SET last_seen=?, lan=? WHERE id=?",
-                                [(ts, lan, h) for h, (ts, lan) in self._seen_hosts.items()])
-            self.db.executemany(
-                "INSERT INTO host_ports VALUES(?,?,?,?,?,?,?) ON CONFLICT DO UPDATE SET"
-                " bytes=bytes+excluded.bytes, last_seen=excluded.last_seen",
-                [(*k, n, ts, ts) for k, (n, ts) in self._port_delta.items()])
-            self.db.executemany("UPDATE hosts SET name=? WHERE ip=?", [(n, ip) for ip, n in names.items()])
-        self._ep_delta.clear()
-        self._seen_hosts.clear()
-        self._port_delta.clear()
-        with self.lock:
-            self.db.executemany("INSERT OR REPLACE INTO sec VALUES(?,?,?,?,?,?)", self._sec_rows)
-            self.db.executemany(
-                "INSERT INTO minute VALUES(?,?,?,?,?,?) ON CONFLICT(ts,proc) DO UPDATE SET"
-                " iu=iu+excluded.iu, id=id+excluded.id, eu=eu+excluded.eu, ed=ed+excluded.ed",
-                [(m, p, *v) for (m, p), v in self._minute_delta.items()])
-            self.db.executemany("UPDATE procs SET last_seen=? WHERE id=?",
-                                [(ts, p) for p, ts in self._seen_procs.items()])
-            self.db.executemany(
-                "INSERT INTO pids VALUES(?,?,?,?,?) ON CONFLICT DO UPDATE SET last_seen=excluded.last_seen",
-                [(*k, f, l) for k, (f, l) in self._seen_pids.items()])
-            self.db.commit()
-        self._sec_rows.clear()
-        self._minute_delta.clear()
-        self._seen_procs.clear()
-        self._seen_pids.clear()
+        # one transaction: on any error it all rolls back and the buffers are kept for the next try
+        try:
+            with self.lock:
+                with self.db:
+                    self.db.executemany(
+                        "INSERT INTO ep_minute VALUES(?,?,?,?,?,?,?) ON CONFLICT(ts,host,proc) DO UPDATE SET"
+                        " iu=iu+excluded.iu, id=id+excluded.id, eu=eu+excluded.eu, ed=ed+excluded.ed",
+                        [(*k, *v) for k, v in self._ep_delta.items()])
+                    self.db.executemany("UPDATE hosts SET last_seen=?, lan=? WHERE id=?",
+                                        [(ts, lan, h) for h, (ts, lan) in self._seen_hosts.items()])
+                    self.db.executemany(
+                        "INSERT INTO host_ports VALUES(?,?,?,?,?,?,?) ON CONFLICT DO UPDATE SET"
+                        " bytes=bytes+excluded.bytes, last_seen=excluded.last_seen",
+                        [(*k, n, ts, ts) for k, (n, ts) in self._port_delta.items()])
+                    self.db.executemany("UPDATE hosts SET name=? WHERE ip=?", [(n, ip) for ip, n in names.items()])
+                    self.db.executemany("INSERT OR REPLACE INTO sec VALUES(?,?,?,?,?,?)", self._sec_rows)
+                    self.db.executemany(
+                        "INSERT INTO minute VALUES(?,?,?,?,?,?) ON CONFLICT(ts,proc) DO UPDATE SET"
+                        " iu=iu+excluded.iu, id=id+excluded.id, eu=eu+excluded.eu, ed=ed+excluded.ed",
+                        [(m, p, *v) for (m, p), v in self._minute_delta.items()])
+                    self.db.executemany("UPDATE procs SET last_seen=? WHERE id=?",
+                                        [(ts, p) for p, ts in self._seen_procs.items()])
+                    self.db.executemany(
+                        "INSERT INTO pids VALUES(?,?,?,?,?) ON CONFLICT DO UPDATE SET last_seen=excluded.last_seen",
+                        [(*k, f, l) for k, (f, l) in self._seen_pids.items()])
+                self.sec_count += len(self._sec_rows)  # only after the commit succeeded
+        except BaseException:
+            self._names = {**names, **self._names}
+            raise
+        for buf in (self._ep_delta, self._seen_hosts, self._port_delta,
+                    self._sec_rows, self._minute_delta, self._seen_procs, self._seen_pids):
+            buf.clear()
+
+    def last_second(self):
+        with self.reader() as db:
+            return db.execute("SELECT MAX(ts) FROM sec").fetchone()[0]
 
     def run_start(self, ts):
         with self.lock:
@@ -224,24 +231,11 @@ class Store:
                 q = "SELECT ts/?*? b, SUM(iu),SUM(id),SUM(eu),SUM(ed) FROM minute WHERE ts>=? AND ts<? GROUP BY b ORDER BY b"
             else:
                 q = "SELECT ts/?*? b, SUM(iu),SUM(id),SUM(eu),SUM(ed) FROM sec WHERE ts>=? AND ts<? GROUP BY b ORDER BY b"
-            return [list(r) for r in db.execute(q, (step, step, frm, to))]
+            return [list(r) for r in db.execute(q, (step, step, frm - frm % 60 if step >= 60 else frm, to))]
 
     def top(self, frm, to):
-        """Per-process totals over a range: {proc_id: [iu, id, eu, ed]}."""
-        out = {}
-        with self.reader() as db:
-            if to - frm <= 3600 and frm >= self.sec_floor():
-                for (blob,) in db.execute("SELECT d FROM sec WHERE ts>=? AND ts<?", (frm, to)):
-                    for p, *v in decode(blob):
-                        acc = out.setdefault(p, [0, 0, 0, 0])
-                        for i in range(4):
-                            acc[i] += v[i]
-            else:
-                for p, *v in db.execute(
-                        "SELECT proc, SUM(iu),SUM(id),SUM(eu),SUM(ed) FROM minute WHERE ts>=? AND ts<? GROUP BY proc",
-                        (frm - frm % 60, to)):
-                    out[p] = v
-        return out
+        """Per-process totals over a range: {proc_id: [iu, id, eu, ed]} (same rules as apps())."""
+        return {p: a["v"] for p, a in self.apps(frm, to).items()}
 
     def seconds(self, frm, to):
         """Per-second records with per-process breakdown: [[ts, totals, [[proc,..4]], None]]."""
@@ -389,7 +383,7 @@ class Store:
             if step >= 60:
                 return [list(r) for r in db.execute(
                     "SELECT ts/?*? b, SUM(iu),SUM(id),SUM(eu),SUM(ed) FROM minute WHERE proc=? AND ts>=? AND ts<?"
-                    " GROUP BY b ORDER BY b", (step, step, proc, frm, to))]
+                    " GROUP BY b ORDER BY b", (step, step, proc, frm - frm % 60, to))]
             buckets = {}
             for ts, blob in db.execute("SELECT ts, d FROM sec WHERE ts>=? AND ts<?", (frm, to)):
                 for p, *v in decode(blob):
@@ -429,11 +423,10 @@ class Store:
             # per-second rows may be pruned earlier than the per-minute rollup
             first = min((x for x in (db.execute(f"SELECT MIN(ts) FROM {t}").fetchone()[0] for t in ("sec", "minute"))
                          if x is not None), default=None)
-            secs = db.execute("SELECT COUNT(*) FROM sec").fetchone()[0]
             procs = db.execute("SELECT COUNT(*) FROM procs").fetchone()[0]
             hosts = db.execute("SELECT COUNT(*) FROM hosts").fetchone()[0]
             ep_first = db.execute("SELECT MIN(first_seen) FROM hosts").fetchone()[0]
-        return {"db_bytes": size, "wal_bytes": wal, "seconds": secs, "procs": procs, "hosts": hosts, "first_ts": first,
+        return {"db_bytes": size, "wal_bytes": wal, "seconds": self.sec_count, "procs": procs, "hosts": hosts, "first_ts": first,
                 "hosts_first_ts": ep_first, "now": int(time.time())}
 
     def db_info(self):
@@ -443,6 +436,7 @@ class Store:
         with self.reader() as db:
             pages, free, psize = (db.execute(f"PRAGMA {p}").fetchone()[0] for p in ("page_count", "freelist_count", "page_size"))
             oldest = {t: db.execute(f"SELECT MIN(ts) FROM {t}").fetchone()[0] for t in ("sec", "minute", "ep_minute")}
-            counts = {t: db.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in ("sec", "procs", "hosts")}
+            counts = {"sec": self.sec_count,
+                      **{t: db.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in ("procs", "hosts")}}
         return {"file_bytes": size(self.path), "wal_bytes": size(self.path + "-wal"), "page_bytes": pages * psize,
                 "free_bytes": free * psize, "oldest": oldest, "counts": counts}
