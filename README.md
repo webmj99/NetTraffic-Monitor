@@ -70,7 +70,9 @@ The dashboard binds to `127.0.0.1` only and has no login: any local user or proc
 
 ## License
 
-GPL-3.0, see [LICENSE](LICENSE). The vendored uPlot (`nettraffic_monitor/static/vendor/`) is MIT licensed. The fonts Fira Sans and Fira Code (`nettraffic_monitor/static/fonts/`) are licensed under the SIL Open Font License 1.1.
+Project is released under GPL-3.0, see [LICENSE](LICENSE).
+The vendored uPlot (`nettraffic_monitor/static/vendor/`, `(c) 2022 Leon Sorokin`) is MIT licensed. 
+The fonts Fira Sans and Fira Code (`nettraffic_monitor/static/fonts/`) are licensed under the SIL Open Font License 1.1.
 
 ##
 Co-developed by Claude Code.

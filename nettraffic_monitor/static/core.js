@@ -255,22 +255,31 @@ function destroyChart(c) {
   c.destroy();
 }
 
-/* Stacked areas: defs = [{label, color}], bottom first. Legend/tooltip shows raw (unstacked) values. */
+/* Stacked areas: defs = [{label, color}], bottom first. Legend/tooltip shows raw (unstacked) values.
+   A legend click leaves the series out of the stack (chart._off) instead of hiding it in uPlot: each band*/
 function makeStack(el, defs) {
   const series = defs.map((d, i) => ({
     // fills only: with spiky per-second data an outline would trace the whole stack in the top color
     label: d.label, stroke: "transparent", width: 0, spanGaps: false,
     fill: i === 0 ? d.color + "d9" : undefined,
-    points: { show: true, size: 6, fill: d.color, filter: isolated },
+    points: { show: true, size: 6, fill: d.color, filter: (u, si) => (u._off.has(si) ? [] : isolated(u, si)) },
     value: (u, v, si, idx) => (idx == null ? "–" : fmtRate(u._raw?.[si - 1]?.[idx])),
   }));
   const bands = defs.slice(1).map((d, i) => ({ series: [i + 2, i + 1], fill: d.color + "d9" }));
   const chart = makeChart(el, series, { bands });
   chart._keys = defs.map((d) => d.key).join("|");
-  // solid legend swatches (stacked series have no own fill, "Other" has no stroke)
+  chart._off = new Set();
   chart.root.querySelectorAll(".u-legend .u-series").forEach((row, i) => {
+    if (i === 0) return;
+    // solid legend swatches (stacked series have no own fill, "Other" has no stroke)
     const mk = row.querySelector(".u-marker");
-    if (i > 0 && mk) { mk.style.background = defs[i - 1].color; mk.style.borderColor = defs[i - 1].color; }
+    if (mk) { mk.style.background = defs[i - 1].color; mk.style.borderColor = defs[i - 1].color; }
+    row.addEventListener("click", (e) => {  // capture phase: runs before (and replaces) uPlot's own toggle
+      e.stopPropagation();
+      if (!chart._off.delete(i)) chart._off.add(i);
+      row.classList.toggle("u-off", chart._off.has(i));
+      if (chart._raw) setStack(chart, chart.data[0], chart._raw);
+    }, true);
   });
   return chart;
 }
@@ -278,7 +287,8 @@ function makeStack(el, defs) {
 function setStack(chart, x, raw) {
   const cum = [];
   raw.forEach((col, i) => {
-    cum.push(col.map((v, j) => (v == null ? null : v + (i ? cum[i - 1][j] ?? 0 : 0))));
+    const off = chart._off.has(i + 1);  // left out: zero height, keeps gaps (null) for the bands
+    cum.push(col.map((v, j) => (v == null ? null : (off ? 0 : v) + (i ? cum[i - 1][j] ?? 0 : 0))));
   });
   chart._raw = raw;
   chart.setData([x, ...cum]);
