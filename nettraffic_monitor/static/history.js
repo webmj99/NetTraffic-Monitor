@@ -34,6 +34,7 @@ async function hvLoad() {
     HV.stack = stack;
     Object.assign(S.procs, stack.meta);
     for (const [id, a] of Object.entries(apps)) S.procs[id] = S.procs[id] || a;
+    procsChanged();
     S.runs = mergeRuns(stack.runs);
     hvRender();
   } finally {
@@ -98,7 +99,7 @@ function hvRows() {
 function hvRenderTable() {
   const rows = hvRows();
   const cell = (v) => `<td class="num${v ? "" : " zero"}">${fmtBytes(v)}</td>`;
-  $("hv-rows").innerHTML = rows.slice(0, 500).map((r) => `<tr tabindex="0" data-id="${r.id}">
+  renderRows($("hv-rows"), rows.slice(0, 500).map((r) => `<tr tabindex="0" data-id="${r.id}" aria-describedby="row-hint">
     <td><span class="pname">${HV.book.has(r.id) ? `<span class="sw" style="background:${HV.book.color(r.id)}"></span>` : ""}${esc(r.name)}</span>
       <span class="ppath" title="${esc(r.path)}">${esc(r.path)}</span></td>
     <td class="co">${esc(r.company) || '<span class="zero">–</span>'}</td>
@@ -107,7 +108,7 @@ function hvRenderTable() {
     <td class="num">${nf1.format(r.share * 100)} %<span class="bar" style="width:${r.share * 100}%"></span></td>
     <td class="num">${fmtDur(r.minutes)}</td>
     <td class="num">${r.pids}</td>
-    <td class="num">${r.last ? dtfShort.format(new Date(r.last * 1000)) : "–"}</td></tr>`).join("");
+    <td class="num">${r.last ? dtfShort.format(new Date(r.last * 1000)) : "–"}</td></tr>`).join(""));
   $("hv-empty").hidden = rows.length > 0;
   $("hv-count").textContent = `(${nf0.format(rows.length)})`;
 }
@@ -140,7 +141,7 @@ function hvInit() {
     const from = fromLocalInput($("hv-from").value), to = fromLocalInput($("hv-to").value);
     if (!(to > from)) return showErr(new Error(t("\"To\" must be after \"From\".")));
     HV.preset = "custom"; HV.from = from; HV.to = to;
-    for (const x of $("hv-presets").children) x.setAttribute("aria-checked", "false");
+    segCheck($("hv-presets"), null);
     S.error = null;
     hvLoad().catch(showErr);
   });

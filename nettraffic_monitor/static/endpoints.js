@@ -120,7 +120,7 @@ function epRows() {
 function epRenderTable() {
   const rows = epRows();
   const more = (n) => (n > 0 ? ` <span class="more">+${n}</span>` : "");
-  $("ep-rows").innerHTML = rows.slice(0, 500).map((r) => `<tr tabindex="0" data-ip="${esc(r.ip)}">
+  renderRows($("ep-rows"), rows.slice(0, 500).map((r) => `<tr tabindex="0" data-ip="${esc(r.ip)}" aria-describedby="row-hint">
     <td><span class="pname">${EP.book.has(r.id) ? `<span class="sw" style="background:${EP.book.color(r.id)}"></span>` : ""}${esc(r.name)}${r.isNew ? ` <span class="badge new">${t("new")}</span>` : ""}</span>
       <span class="ppath">${r.host ? esc(r.ip) : t("no hostname")}</span></td>
     <td>${netBadge(r.lan)}</td>
@@ -132,7 +132,7 @@ function epRenderTable() {
     <td class="num">${nf1.format(r.share * 100)} %<span class="bar" style="width:${r.share * 100}%"></span></td>
     <td class="num">${fmtDur(r.minutes)}</td>
     <td class="num">${dtfShort.format(new Date(r.first * 1000))}</td>
-    <td class="num">${r.last ? dtfShort.format(new Date(r.last * 1000)) : "–"}</td></tr>`).join("");
+    <td class="num">${r.last ? dtfShort.format(new Date(r.last * 1000)) : "–"}</td></tr>`).join(""));
   $("ep-empty").hidden = rows.length > 0;
   $("ep-count").textContent = `(${nf0.format(rows.length)})`;
 }
@@ -162,6 +162,7 @@ async function openHost(ip, from, to) {
   hostFocus = document.activeElement;
   const d = await api(`/api/host?ip=${encodeURIComponent(ip)}&from=${from}&to=${to}`);
   Object.assign(S.procs, d.procs_meta);
+  procsChanged();
   const m = d.meta;
   S.hostDetail = ip;
   $("h-name").textContent = m.name || m.ip;
@@ -174,7 +175,7 @@ async function openHost(ip, from, to) {
   $("h-total").textContent = t("{0} in {1} of active time", fmtBytes(d.all_time.bytes), fmtDur(d.all_time.minutes));
   const inRange = d.procs.reduce((s, p) => s + p[1] + p[2] + p[3] + p[4], 0);
   $("h-range").textContent = `${fmtBytes(inRange)} · ${dtfShort.format(new Date(from * 1000))} – ${dtfShort.format(new Date(to * 1000))}`;
-  $("h-procs").innerHTML = d.procs.map(([p, iu, id_, eu, ed, mins]) => `<tr class="link" data-proc="${p}" tabindex="0">
+  $("h-procs").innerHTML = d.procs.map(([p, iu, id_, eu, ed, mins]) => `<tr class="link" data-proc="${p}" tabindex="0" aria-describedby="row-hint">
     <td>${esc(procName(p))}</td><td class="num">${fmtBytes(id_ + ed)}</td><td class="num">${fmtBytes(iu + eu)}</td><td class="num">${fmtDur(mins)}</td></tr>`).join("")
     || `<tr><td colspan="4">${t("No data in period")}</td></tr>`;
   $("h-ports").innerHTML = d.ports.map((p) => `<tr><td>${esc(svc(p) || "–")}</td>
@@ -183,6 +184,7 @@ async function openHost(ip, from, to) {
     || `<tr><td colspan="4">–</td></tr>`;
   $("scrim").hidden = false;
   $("hdrawer").hidden = false;
+  setInert(true);
   $("h-close").focus();
   destroyChart(hostChart);
   hostChart = makeChart($("chartHost"), [lineSeries("Download", cssVar("--dl")), lineSeries("Upload", cssVar("--ul"))]);
@@ -198,7 +200,8 @@ async function openHost(ip, from, to) {
   hostChart.setData([x, dn, up]);
   $("h-procs").onclick = $("h-procs").onkeydown = (e) => {
     const tr = e.target.closest("tr[data-proc]");
-    if (!tr || (e.type === "keydown" && e.key !== "Enter")) return;
+    if (!tr || (e.type === "keydown" && e.key !== "Enter" && e.key !== " ")) return;
+    e.preventDefault();
     closeHost(false);
     openDetail(tr.dataset.proc, from, to).catch(showErr);
   };
@@ -207,6 +210,7 @@ async function openHost(ip, from, to) {
 function closeHost(restore = true) {
   $("hdrawer").hidden = true;
   $("scrim").hidden = true;
+  setInert(false);
   destroyChart(hostChart);
   hostChart = null;
   S.hostDetail = null;
@@ -222,7 +226,7 @@ function epInit() {
     const from = fromLocalInput($("ep-from").value), to = fromLocalInput($("ep-to").value);
     if (!(to > from)) return showErr(new Error(t("\"To\" must be after \"From\".")));
     EP.preset = "custom"; EP.from = from; EP.to = to;
-    for (const x of $("ep-presets").children) x.setAttribute("aria-checked", "false");
+    segCheck($("ep-presets"), null);
     S.error = null;
     epLoad().catch(showErr);
   });

@@ -87,11 +87,11 @@ function ovRenderTable() {
   rows = rows.slice(0, 300);
   const max = Math.max(1, ...rows.map((r) => r.total));
   const cell = (v, rate) => `<td class="num${v ? "" : " zero"}">${rate ? fmtRate(v) : fmtBytes(v)}</td>`;
-  $("rows").innerHTML = rows.map((r) => `<tr tabindex="0" data-id="${r.id}">
+  renderRows($("rows"), rows.map((r) => `<tr tabindex="0" data-id="${r.id}" aria-describedby="row-hint">
     <td><span class="pname">${esc(r.name)}</span><span class="ppath" title="${esc(r.path)}">${esc(r.path)}</span></td>
     ${cell(r.ed)}${cell(r.eu)}${cell(r.id_)}${cell(r.iu)}
     <td class="num">${fmtBytes(r.total)}<span class="bar" style="width:${(r.total / max) * 100}%"></span></td>
-    ${cell(r.rate, true)}</tr>`).join("");
+    ${cell(r.rate, true)}</tr>`).join(""));
   $("empty").hidden = rows.length > 0;
 }
 

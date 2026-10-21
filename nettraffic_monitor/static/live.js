@@ -115,7 +115,7 @@ function lvRender() {
       if (!r) { raw.forEach((col) => col.push(inRun(ts) ? 0 : null)); continue; }
       let rest = r.t[c.i];
       ids.forEach((id, j) => {
-        const p = r.p?.find((q) => String(q[0]) === id);
+        const p = (r.pm ||= new Map((r.p || []).map((q) => [String(q[0]), q]))).get(id);
         const v = p ? p[c.i + 1] : 0;
         rest -= v;
         raw[j].push(v);
@@ -133,20 +133,20 @@ function lvRender() {
       .sort((p, q) => q[2] - p[2] || q[1] - p[1]).slice(0, LV_LIST);
     const procs = rank(a.procs, a.pr);
     const maxP = Math.max(1, ...procs.map((p) => p[1]));
-    $(`lv-${c.k}-procs`).innerHTML = procs.map(([id, sum, rate]) => `
+    renderRows($(`lv-${c.k}-procs`), procs.map(([id, sum, rate]) => `
       <li data-proc="${id}" tabindex="0" role="button" aria-label="${esc(t("Details for {0}", procName(id)))}">
         <span class="sw" style="background:${LV.book.color(id)}"></span>
         <span class="who"><span class="nm">${esc(procName(id))}</span><span class="bar" style="width:${(sum / maxP) * 100}%"></span></span>
         <span class="r">${fmtRate(rate)}</span><span class="s">${fmtBytes(sum)}</span></li>`).join("")
-      || `<li class="none">${t("No traffic in time window")}</li>`;
+      || `<li class="none">${t("No traffic in time window")}</li>`);
 
     const eps = rank(a.eps, a.er);
-    $(`lv-${c.k}-eps`).innerHTML = eps.map(([k, sum, rate]) => {
+    renderRows($(`lv-${c.k}-eps`), eps.map(([k, sum, rate]) => {
       const [proc, ip] = [k.slice(0, k.indexOf("|")), k.slice(k.indexOf("|") + 1)];
       const host = S.hosts[ip];
       return `<li data-ip="${esc(ip)}" tabindex="0" role="button"><span class="who"><span class="nm" title="${esc(ip)}">${esc(host || ip)}</span>
         <span class="sub2">${host ? esc(ip) + " · " : ""}${esc(procName(proc))}</span></span>
         <span class="r">${fmtRate(rate)}</span><span class="s">${fmtBytes(sum)}</span></li>`;
-    }).join("") || `<li class="none">${t("No endpoints in time window")}</li>`;
+    }).join("") || `<li class="none">${t("No endpoints in time window")}</li>`);
   });
 }

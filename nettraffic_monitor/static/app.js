@@ -42,10 +42,13 @@ function renderStatus() {
   const el = $("status"), txt = $("statusText"), btn = $("toggle");
   el.className = "status" + (S.running ? " on" : "") + (S.error ? " err" : "");
   let msg = S.running ? t("Running since {0}", tf.format(new Date(S.since * 1000))) : t("Stopped");
-  if (S.running && S.lastTick && now() - S.lastTick > 5) msg = t("No data for {0} s", now() - S.lastTick);
+  // a fixed timestamp, not a seconds counter: the status is a live region and would be re-announced every second
+  if (S.running && S.lastTick && now() - S.lastTick > 5) msg = t("No data since {0}", tf.format(new Date(S.lastTick * 1000)));
   if (S.running && (S.lost[0] || S.lost[1])) msg += " · " + t("lost: {0} events, {1} buffers", nf0.format(S.lost[0]), nf0.format(S.lost[1]));
+  if (S.offline) msg = t("Disconnected – retrying …");
   if (S.error) msg = t("Error");
-  txt.textContent = msg;
+  if (S.offline) el.className = "status err";
+  if (txt.textContent !== msg) txt.textContent = msg;
   btn.className = "btn " + (S.running ? "danger" : "primary");
   btn.querySelector("use").setAttribute("href", S.running ? "#i-stop" : "#i-play");
   btn.querySelector("span").textContent = S.running ? t("Stop") : t("Start");
@@ -109,8 +112,8 @@ function connect() {
     if (m.type === "tick") onTick(m);
     else if (m.type === "status") applyStatus(m);
   };
-  es.onerror = () => { $("statusText").textContent = t("Disconnected – retrying …"); $("status").className = "status err"; };
-  es.onopen = () => { loadLive().catch(showErr); };
+  es.onerror = () => { S.offline = true; renderStatus(); };
+  es.onopen = () => { S.offline = false; renderStatus(); loadLive().catch(showErr); };
 }
 
 /* ---------- events ---------- */
@@ -135,9 +138,9 @@ $("d-copy").addEventListener("click", async () => {
   setTimeout(() => (lbl.textContent = t("Copy")), 1500);
 });
 $("d-reveal").addEventListener("click", () => post("/api/reveal?id=" + S.detail).catch(showErr));
-/* ---------- theme: explicit choice in data-theme (see theme.js), otherwise the system setting ---------- */
+/* ---------- theme: data-theme holds the saved choice or the system setting (see theme.js) ---------- */
 const darkMq = matchMedia("(prefers-color-scheme: dark)");
-const isDark = () => (document.documentElement.dataset.theme || (darkMq.matches ? "dark" : "light")) === "dark";
+const isDark = () => document.documentElement.dataset.theme === "dark";
 function renderThemeBtn() {
   const b = $("theme"), label = isDark() ? t("Switch to light mode") : t("Switch to dark mode");
   b.querySelector("use").setAttribute("href", isDark() ? "#i-sun" : "#i-moon");
@@ -151,7 +154,11 @@ function onThemeChange() {  // charts read their colors from CSS variables once,
   destroyChart(EP.chart); EP.chart = null; epRender();
   scheduleRender();
 }
-darkMq.addEventListener("change", onThemeChange);
+darkMq.addEventListener("change", () => {
+  if (savedTheme()) return;
+  document.documentElement.dataset.theme = darkMq.matches ? "dark" : "light";
+  onThemeChange();
+});
 $("theme").addEventListener("click", () => {
   const th = isDark() ? "light" : "dark";
   document.documentElement.dataset.theme = th;

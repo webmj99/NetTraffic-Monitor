@@ -97,7 +97,7 @@
             <th scope="col" class="num"><button type="button" data-sort="eu">Internet ↑</button></th>
             <th scope="col" class="num"><button type="button" data-sort="id">LAN ↓</button></th>
             <th scope="col" class="num"><button type="button" data-sort="iu">LAN ↑</button></th>
-            <th scope="col" class="num"><button type="button" data-sort="total" aria-sort="descending">Total</button></th>
+            <th scope="col" class="num" aria-sort="descending"><button type="button" data-sort="total">Total</button></th>
             <th scope="col" class="num"><button type="button" data-sort="rate">Current</button></th>
           </tr></thead>
           <tbody id="rows"></tbody>
@@ -175,7 +175,7 @@
             <th scope="col" class="num"><button type="button" data-sort="eu">Internet ↑</button></th>
             <th scope="col" class="num"><button type="button" data-sort="id">LAN ↓</button></th>
             <th scope="col" class="num"><button type="button" data-sort="iu">LAN ↑</button></th>
-            <th scope="col" class="num"><button type="button" data-sort="total" aria-sort="descending">Total</button></th>
+            <th scope="col" class="num" aria-sort="descending"><button type="button" data-sort="total">Total</button></th>
             <th scope="col" class="num"><button type="button" data-sort="share">Share</button></th>
             <th scope="col" class="num"><button type="button" data-sort="minutes">Active</button></th>
             <th scope="col" class="num"><button type="button" data-sort="pids">Processes</button></th>
@@ -256,7 +256,7 @@
             <th scope="col"><button type="button" data-sort="procsTxt">Processes</button></th>
             <th scope="col" class="num"><button type="button" data-sort="down">Download</button></th>
             <th scope="col" class="num"><button type="button" data-sort="up">Upload</button></th>
-            <th scope="col" class="num"><button type="button" data-sort="total" aria-sort="descending">Total</button></th>
+            <th scope="col" class="num" aria-sort="descending"><button type="button" data-sort="total">Total</button></th>
             <th scope="col" class="num"><button type="button" data-sort="share">Share</button></th>
             <th scope="col" class="num"><button type="button" data-sort="minutes">Active</button></th>
             <th scope="col" class="num"><button type="button" data-sort="first">First</button></th>
@@ -337,6 +337,7 @@
     </div>
   </section>
 </main>
+<span class="sr" id="row-hint">Press Enter to open details</span>
 
 <footer class="foot" id="foot"><svg class="ic"><use href="#i-db"/></svg><span id="dbinfo">–</span></footer>
 

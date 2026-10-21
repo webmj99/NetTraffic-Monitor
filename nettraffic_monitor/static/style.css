@@ -6,13 +6,14 @@
   --border: #d5dbe5;
   --text: #0f172a;
   --text-2: #475569;
-  --text-3: #64748b;
+  --text-3: #5b6b80;
+  --border-strong: #7d8a9e;  /* form field outlines: 3:1 against the card */
   --dl: #2a78d6;          /* series 1: download */
   --ul: #eb6834;          /* series 2: upload */
   --c1: #2a78d6; --c2: #eb6834; --c3: #1baf7a; --c4: #eda100; --c5: #e87ba4; --c6: #008300; --c7: #6250d6; --c8: #e34948; --c-other: #94a3b8;
   --good: #0ca30c;
   --critical: #d03b3b;
-  --accent: #2a78d6;
+  --accent: #2470cc;
   --on-accent: #ffffff;
   --grid: rgba(15, 23, 42, .07);
   --ring: #2a78d6;
@@ -22,21 +23,12 @@
   --font: "Fira Sans", system-ui, "Segoe UI", sans-serif;
   --mono: "Fira Code", ui-monospace, "Cascadia Code", Consolas, monospace;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --bg: #0b1120; --surface: #131b2e; --surface-2: #1b2438; --border: #2a3550;
-    --text: #f1f5f9; --text-2: #b6c2d4; --text-3: #8a97ab;
-    --dl: #3987e5; --ul: #d95926;
-    --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; --c5: #d55181; --c6: #008300; --c7: #9085e9; --c8: #e66767; --c-other: #5b6779;
-    --accent: #3987e5; --on-accent: #06101f;
-    --grid: rgba(241, 245, 249, .07); --ring: #8fbfff; --shadow: none;
-  }
-}
+/* theme.js always sets data-theme (saved choice, else the system setting), so dark is defined once. */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0b1120; --surface: #131b2e; --surface-2: #1b2438; --border: #2a3550;
+  --bg: #0b1120; --surface: #131b2e; --surface-2: #1b2438; --border: #2a3550; --border-strong: #64738f;
   --text: #f1f5f9; --text-2: #b6c2d4; --text-3: #8a97ab;
+  --critical: #ef6b6b;
   --dl: #3987e5; --ul: #d95926;
   --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; --c5: #d55181; --c6: #008300; --c7: #9085e9; --c8: #e66767; --c-other: #5b6779;
   --accent: #3987e5; --on-accent: #06101f;
@@ -52,7 +44,7 @@ h2 { font-size: 14px; }
 h3 { font-size: 13px; color: var(--text-2); margin: var(--sp-5) 0 var(--sp-2); }
 code, .mono, .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .ic { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .muted { color: var(--text-3); margin: 0; font-size: 13px; }
 :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 
@@ -124,7 +116,7 @@ main { padding: var(--sp-5); display: grid; grid-template-columns: minmax(0, 1fr
 /* table */
 .search { position: relative; margin-left: auto; display: flex; align-items: center; }
 .search .ic { position: absolute; left: 10px; color: var(--text-3); }
-.search input { width: min(320px, 50vw); min-height: 36px; padding: 0 var(--sp-3) 0 32px; border: 1px solid var(--border);
+.search input { width: min(320px, 50vw); min-height: 36px; padding: 0 var(--sp-3) 0 32px; border: 1px solid var(--border-strong);
   border-radius: 8px; background: var(--surface-2); color: var(--text); font: 14px var(--font); }
 /* Scrolls in both directions; the sticky header stays visible. Height follows the viewport minus topbar + card header. */
 .table-wrap { overflow: auto; max-height: max(280px, calc(100dvh - 150px)); overscroll-behavior: contain; }
@@ -143,8 +135,8 @@ table { width: 100%; border-collapse: collapse; }
 .procs.resized .ppath { max-width: none; }
 /* Marker is always there (hidden) so auto widths already fit it and sorting never shifts or wraps the title. */
 .procs th button::after { content: "▾"; display: inline-block; width: 1.2em; text-align: right; visibility: hidden; }
-.procs th button[aria-sort]::after { visibility: visible; }
-.procs th button[aria-sort="ascending"]::after { content: "▴"; }
+.procs th[aria-sort] button::after { visibility: visible; }
+.procs th[aria-sort="ascending"] button::after { content: "▴"; }
 th.num, td.num { text-align: right; }
 .procs td { padding: var(--sp-2) var(--sp-4); border-bottom: 1px solid var(--border); font-size: 13px; white-space: nowrap; }
 .procs tbody tr { cursor: pointer; transition: background-color .12s; }
@@ -191,7 +183,7 @@ th.num, td.num { text-align: right; }
 /* ---------- navigation & views ---------- */
 .tabs { display: flex; gap: 2px; margin-left: var(--sp-3); }
 .tabs a { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 var(--sp-3); border-radius: 8px;
-  color: var(--text-2); text-decoration: none; font-weight: 500; font-size: 14px; transition: background-color .15s, color .15s; }
+  color: var(--text-2); text-decoration: none; font-weight: 500; font-size: 14px; white-space: nowrap; transition: background-color .15s, color .15s; }
 .tabs a:hover { background: var(--surface-2); color: var(--text); }
 .tabs a[aria-current="page"] { background: var(--surface-2); color: var(--text); box-shadow: inset 0 -2px 0 var(--accent); }
 .view { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); }
@@ -207,7 +199,7 @@ th.num, td.num { text-align: right; }
 .chart.tall { --plot-h: 300px; }
 .custom-range { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-left: auto; }
 .custom-range label { display: flex; align-items: center; gap: 6px; color: var(--text-2); font-size: 13px; }
-.custom-range input { min-height: 36px; padding: 0 var(--sp-2); border: 1px solid var(--border); border-radius: 8px;
+.custom-range input { min-height: 36px; padding: 0 var(--sp-2); border: 1px solid var(--border-strong); border-radius: 8px;
   background: var(--surface-2); color: var(--text); font: 13px var(--mono); }
 .sw { display: inline-block; flex: none; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: 0; }
 td.co { max-width: 180px; overflow: hidden; text-overflow: ellipsis; color: var(--text-2); }
@@ -249,7 +241,9 @@ td.co { max-width: 180px; overflow: hidden; text-overflow: ellipsis; color: var(
   .kpis.five { grid-template-columns: minmax(0, 1fr); }
   .lv-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .lv-lists { grid-template-columns: minmax(0, 1fr); }
+  .tabs { flex-wrap: wrap; overflow: visible; }  /* every view stays reachable without sideways scrolling */
   .tabs a { padding: 0 var(--sp-2); }
+  .tabs a .ic { display: none; }
   #hv-table td:nth-child(n+3):not(:nth-child(7)), #hv-table th:nth-child(n+3):not(:nth-child(7)) { display: none; }
   #hv-table td.co, #hv-table th:nth-child(2) { display: none; }
 }
@@ -287,7 +281,7 @@ tr.link:hover, tr.link:focus-visible { background: var(--surface-2); }
 .field .help { grid-column: 1 / -1; }
 .help { margin: 0; color: var(--text-3); font-size: 13px; }
 .inp { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--text-2); font-size: 13px; }
-.inp input { width: 110px; min-height: 36px; padding: 0 var(--sp-2); border: 1px solid var(--border); border-radius: 8px;
+.inp input { width: 110px; min-height: 36px; padding: 0 var(--sp-2); border: 1px solid var(--border-strong); border-radius: 8px;
   background: var(--surface-2); color: var(--text); font: 14px var(--mono); text-align: right; }
 .check { display: flex; align-items: flex-start; gap: var(--sp-2); font-size: 14px; cursor: pointer; }
 .check input { width: 16px; height: 16px; margin: 3px 0 0; flex: none; accent-color: var(--accent); }
@@ -301,3 +295,11 @@ tr.link:hover, tr.link:focus-visible { background: var(--surface-2); }
 .last { margin: 2px 0 0; color: var(--text-2); font: 12px var(--mono); overflow-wrap: anywhere; }
 @media (max-width: 1100px) { .settings { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 640px) { .tasks li { flex-wrap: wrap; } }
+
+/* ---------- touch: 44px targets (last, so it wins over the view rules above) ---------- */
+@media (pointer: coarse) {
+  .btn, .btn.sm, .btn.icon, .icon-btn, .seg button, .seg.sm button, .tabs a, .procs th button, .search input,
+  .custom-range input, .inp input { min-height: 44px; }
+  .btn.icon, .icon-btn { width: 44px; height: 44px; }
+  .col-grip { width: 20px; }
+}

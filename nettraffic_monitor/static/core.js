@@ -36,7 +36,7 @@ const DE_TEXT = {
   "Time": "Zeit", "No file description": "Keine Dateibeschreibung", "No endpoints recorded": "Keine Gegenstellen aufgezeichnet",
   "Column width {0}": "Spaltenbreite {0}", "Running since {0}": "Läuft seit {0}", "Language": "Sprache", "Switch to dark mode": "Zum dunklen Modus wechseln", "Switch to light mode": "Zum hellen Modus wechseln", "Interface language": "Sprache der Oberfläche",
   "Saved in this browser. The page reloads to apply it.": "Wird in diesem Browser gespeichert. Die Seite lädt dafür neu.", "lost: {0} events, {1} buffers": "verloren: {0} Events, {1} Puffer", "Stopped": "Gestoppt",
-  "No data for {0} s": "Keine Daten seit {0} s", "Error": "Fehler", "Error: {0}": "Fehler: {0}", "Stop": "Stopp",
+  "No data since {0}": "Keine Daten seit {0}", "Press Enter to open details": "Enter öffnet die Details", "Error": "Fehler", "Error: {0}": "Fehler: {0}", "Stop": "Stopp",
   "Start monitoring": "Monitoring starten", "Stop monitoring": "Monitoring stoppen",
   "Data {0} (+ {1} write buffer) · {2} seconds with traffic · {3} programs · {4} endpoints · data since {5}":
     "Daten {0} (+ {1} Schreibpuffer) · {2} Sekunden mit Traffic · {3} Programme · {4} Gegenstellen · Daten seit {5}",
@@ -96,7 +96,7 @@ const DE_TEXT = {
 const t = (s, ...a) => ((LANG === "de" && DE_TEXT[s]) || s).replace(/\{(\d)\}/g, (_, i) => a[i]);
 function translatePage() {
   document.documentElement.lang = LANG;
-  for (const b of $("st-lang").children) b.setAttribute("aria-checked", String(b.dataset.lang === LANG));
+  segCheck($("st-lang"), $("st-lang").querySelector(`[data-lang="${LANG}"]`));
   if (LANG !== "de") return;
   const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   for (let n; (n = w.nextNode());) {
@@ -159,14 +159,37 @@ const now = () => Math.floor(Date.now() / 1000);
 // Last complete second: follow the server's ticks so the window moves exactly when data arrives.
 const liveEnd = () => (S.running && now() - S.lastTs <= 5 ? S.lastTs : now() - 2);
 // Name, plus description (or parent folder) when several executables share that name.
+// Cached because tables call it per row every second; call procsChanged() after changing S.procs.
+const nameCache = new Map();
+const procsChanged = () => nameCache.clear();
 function procName(id) {
   const m = S.procs[id];
   if (!m) return "…";
+  let n = nameCache.get(String(id));
+  if (n) return n;
   const twins = Object.entries(S.procs).filter(([k, o]) => k !== String(id) && o && o.name === m.name);
-  if (!twins.length) return m.name;
   const parts = (m.path || "").split("\\");
   const descUnique = m.description && twins.every(([, o]) => o.description !== m.description);
-  return `${m.name} (${descUnique ? m.description : parts[parts.length - 2] || "?"})`;
+  n = twins.length ? `${m.name} (${descUnique ? m.description : parts[parts.length - 2] || "?"})` : m.name;
+  nameCache.set(String(id), n);
+  return n;
+}
+
+/* Replaces a live list's rows, skipping identical HTML and keeping keyboard focus on the same row. */
+function renderRows(el, html) {
+  if (el._html === html) return;
+  el._html = html;
+  const a = document.activeElement;
+  const row = el.contains(a) && a.closest("[data-id],[data-proc],[data-ip]");
+  const sel = row && ["data-id", "data-proc", "data-ip"].filter((k) => row.hasAttribute(k))
+    .map((k) => `[${k}="${CSS.escape(row.getAttribute(k))}"]`).join("");
+  el.innerHTML = html;
+  if (sel) el.querySelector(sel)?.focus({ preventScroll: true });
+}
+
+/* Drawers are modal: everything behind them is inert while one is open. */
+function setInert(on) {
+  for (const el of [document.querySelector(".topbar"), document.querySelector("main"), $("foot")]) el.inert = on;
 }
 
 /* ---------- api ---------- */
@@ -184,6 +207,7 @@ async function ensureProcs(ids) {
   if (!missing.length) return;
   missing.forEach((id) => (S.procs[id] = null));
   Object.assign(S.procs, await api("/api/procs?ids=" + missing.join(",")));
+  procsChanged();
 }
 
 const inRun = (a, b = a + 1) => S.runs.some(([s, e]) => s < b && (e == null || e >= a));
@@ -332,18 +356,20 @@ async function openDetail(id, from, to) {
   $("d-pids").innerHTML = d.pids.map((p) => `<tr><td>${p.pid}</td><td>${fmtFiletime(p.created)}</td>
     <td>${dtfShort.format(new Date(p.first_seen * 1000))} – ${tf.format(new Date(p.last_seen * 1000))}</td></tr>`).join("")
     || `<tr><td colspan="3">–</td></tr>`;
-  $("d-hosts").innerHTML = (d.hosts || []).map((h) => `<tr class="link" data-ip="${esc(h.ip)}" tabindex="0">
+  $("d-hosts").innerHTML = (d.hosts || []).map((h) => `<tr class="link" data-ip="${esc(h.ip)}" tabindex="0" aria-describedby="row-hint">
     <td>${esc(h.name || h.ip)}${h.name ? `<span class="ppath">${esc(h.ip)}</span>` : ""}</td><td>${h.lan ? "LAN" : "Internet"}</td>
     <td class="num">${fmtBytes(h.id + h.ed)}</td><td class="num">${fmtBytes(h.iu + h.eu)}</td></tr>`).join("")
     || `<tr><td colspan="4">${t("No endpoints recorded")}</td></tr>`;
   $("d-hosts").onclick = $("d-hosts").onkeydown = (e) => {
     const tr = e.target.closest("tr[data-ip]");
-    if (!tr || (e.type === "keydown" && e.key !== "Enter")) return;
+    if (!tr || (e.type === "keydown" && e.key !== "Enter" && e.key !== " ")) return;
+    e.preventDefault();
     closeDetail();
     openHost(tr.dataset.ip, from, to).catch(showErr);
   };
   $("scrim").hidden = false;
   $("drawer").hidden = false;
+  setInert(true);
   $("d-close").focus();
   destroyChart(procChart);
   procChart = makeChart($("chartProc"), [
@@ -362,6 +388,7 @@ async function openDetail(id, from, to) {
 function closeDetail() {
   $("drawer").hidden = true;
   $("scrim").hidden = true;
+  setInert(false);
   destroyChart(procChart);
   procChart = null;
   S.detail = null;
@@ -381,8 +408,8 @@ function wireSort(table, state, onChange) {
     const key = b.dataset.sort;
     const textual = ["name", "company"].includes(key);
     state.sort = { key, dir: state.sort.key === key ? -state.sort.dir : textual ? 1 : -1 };
-    table.querySelectorAll("th button").forEach((x) => x.removeAttribute("aria-sort"));
-    b.setAttribute("aria-sort", state.sort.dir > 0 ? "ascending" : "descending");
+    table.querySelectorAll("th").forEach((x) => x.removeAttribute("aria-sort"));
+    b.closest("th").setAttribute("aria-sort", state.sort.dir > 0 ? "ascending" : "descending");
     onChange();
   });
 }
@@ -430,12 +457,19 @@ function wireResize(table) {
   }
 }
 
+/* Checks b (or nothing) in a radiogroup; only the checked radio (else the first) is a Tab stop. */
+function segCheck(el, b) {
+  for (const x of el.children) { x.setAttribute("aria-checked", String(x === b)); x.tabIndex = -1; }
+  (b || el.children[0]).tabIndex = 0;
+}
+
 /* Generic radiogroup (segmented control) wiring with arrow-key support. */
 function wireSeg(el, onPick) {
+  segCheck(el, el.querySelector("[aria-checked=true]"));
   el.addEventListener("click", (e) => {
     const b = e.target.closest("button[role=radio]");
     if (!b) return;
-    for (const x of el.children) x.setAttribute("aria-checked", String(x === b));
+    segCheck(el, b);
     onPick(b);
   });
   el.addEventListener("keydown", (e) => {
